@@ -2,7 +2,7 @@
 
 require 'sinatra'
 require 'erb'
-require './twitter-rss'
+require './twitter-links'
 
 configure do
     set :sessions, true
@@ -10,21 +10,61 @@ end
 
 before do
     @home = request.scheme + '://' + request.host + ':' + request.port.to_s
+    @twitter = TwitterLinks::Twitter.new
     if not session[:user_id].nil? then
-        @user = TwitterRss::User.new session[:user_id]
-        @twitter = @user.twitter
-    else
-        @twitter = TwitterRss::Twitter.new
+        @user = TwitterLinks::User.new session[:user_id]
+        if not @user.has? 'screen_name' then
+            @user = nil
+        else
+            @twitter = @user.twitter
+        end
     end
 end
 
 get '/' do
-    if not @user.nil? then
-        redirect to '/links'
-    else
+    if @user.nil? then
         redirect to '/connect'
     end
+
+    if params.has_key? 'page' then
+        @page = params['page'].to_i
+    else
+        @page = 1
+    end
+
+    if params.has_key? 'search' then
+        @search = params['search']
+    else
+        @search = ''
+    end
+
+    range = 25
+    start = (@page - 1) * range
+    stop = start + range - 1
+    @links = @user.get_links @search, start, stop
+
+    total = @user.count_links @search
+    @pages = (total.to_f / range).ceil
+
+    erb :index
 end
+
+get '/feed/:user_id/:token' do |user_id,token|
+    @user = TwitterLinks::User.new user_id
+    if @user.get('secret') != token then
+        halt 403, 'Forbidden!'
+    end
+
+    if params.has_key? 'search' then
+        search = params['search']
+    else
+        search = ''
+    end
+
+    @links = @user.get_links search
+    builder :feed
+end
+
 
 get '/connect' do
     request_token = @twitter.request_token(
@@ -46,17 +86,20 @@ get '/auth' do
         if @twitter.authorized? then
             info = @twitter.info
 
-            user = TwitterRss::User.new info['screen_name']
-            user.token = access_token.token
-            user.secret = access_token.secret
+            user = TwitterLinks::User.new info['id'].to_s
+            user.set 'screen_name', info['screen_name']
+            user.set 'token', access_token.token
+            user.set 'secret', access_token.secret
+            user.save
 
             session[:user_id] = user.id
 
-            redirect '/links'
-        else
             redirect '/'
+        else
+            redirect '/connect'
         end
     rescue Exception => e
+        puts e
         redirect '/disconnect'
     end
 end
@@ -66,41 +109,6 @@ get '/disconnect' do
     session[:request_token] = nil
     session[:request_token_secret] = nil
     redirect '/'
-end
-
-get '/links' do
-    redirect to '/links/1'
-end
-
-get '/links/:page' do |page|
-    if @user.nil? then
-        redirect to '/'
-    end
-
-    range = 10
-    @page = page.to_i
-    @pages = (@user.timeline.length.to_f / range).ceil
-
-    start = (@page - 1) * range
-    stop = start + range - 1
-    @links = @user.timeline.get start, stop
-    erb :links
-end
-
-get '/feed/:user_id/:token' do |user_id,token|
-    @user = TwitterRss::User.new user_id
-    if @user.feed_token != token then
-        halt 403, 'Forbidden!'
-    end
-    @links = @user.timeline.get 0, 20
-    builder :feed
-end
-
-get '/feed/reset_token' do
-    if not @user.nil? then
-        @user.reset_feed_token
-    end
-    redirect to '/'
 end
 
 helpers do
@@ -120,6 +128,33 @@ helpers do
         end
         diff = diff / 24
         return diff.ceil.to_s + " day(s) ago"
+    end
+
+    def query(data, reset = false)
+
+        if reset then
+            result = data
+        else
+            result = request.env['rack.request.query_hash'].clone
+            data.each do |key, value|
+                result[key] = value
+            end
+        end
+
+        values = []
+        result.each do |key, value|
+            values << key + '=' + URI::encode(value.to_s)
+        end
+
+        '?' + values.join('&')
+    end
+
+    def color(tag)
+        result = ""
+        tag.scan(/./).each do |char|
+            result = result + char.ord.to_s
+        end
+        result.to_i.to_s(16)[0..5]
     end
 
 end

@@ -1,0 +1,141 @@
+<% # encoding: UTF-8 %>
+<html>
+    <head>
+        <title>Twitter Links</title>
+        <meta name="description" content="All your Twitter links in a same place" />
+        <link rel="stylesheet" type="text/css" href="/css/foundation.min.css" />
+        <link rel="stylesheet" type="text/css" href="/css/app.css" />
+        <script type="text/javascript" src="/js/modernizr.foundation.js"></script>
+        <link href="/feed/<%= @user.id %>/<%= @user.get('secret') %>" type="application/rss+xml" rel="alternate" />
+        <link href="/img/favicon.png" rel="icon" />
+    </head>
+    <body>
+
+        <div class="fixed contain-to-grid">
+            <nav class="top-bar">
+                <section>
+                    <ul class="left">
+                        <li>
+                            <a href="/">Home</a>
+                        </li>
+                        <li class="divider"></li>
+                        <li>
+                            <a href="http://twitter.com/<%= @user.to_s %>" target="_blank" title="My timeline">
+                                <%= @user.to_s %>
+                            </a>
+                        </li>
+                    </ul>
+                    <ul class="right">
+                        <li>
+                            <a href="/feed/<%= @user.id %>/<%= @user.get('secret') %>">
+                                Feed
+                            </a>
+                        </li>
+                        <li class="divider"></li>
+                        <li>
+                            <a href="/disconnect" title="Sign-out">
+                                Sign-out
+                            </a>
+                        </li>
+                    </ul>
+                </section>
+            </nav>
+        </div>
+        <div id="main" class="row">
+            <div class="twelve columns">
+                <div class="row">
+                    <div class="eight columns">
+                        Last update: <strong><%= Time.at @user.get('crawled_at').to_i %></strong>
+                    </div>
+                    <div class="four columns">
+                        <form class="row collapse">
+                            <div class="eight columns">
+                                <input type="text" name="search" value="<%= @search.to_s %>" />
+                            </div>
+                            <div class="four columns">
+                                <input type="submit" class="button expand postfix" value="Search" />
+                            </div>
+                        </form>
+                    </div>
+                </div>
+                <% if @links.empty? %>
+                    <p class="panel">No result found. Please come back later or try another search!</p>
+
+                <% else %>
+                    <ul class="twelve accordion">
+                    <% @links.each do |link| %>
+                        <li id="link-<%= link.id %>">
+                            <div class="title row twelve">
+                                <div class="ten columns">
+                                    <% link.get_tags.each do |tag| %>
+                                    <a href="<%= query({'search' => tag}, true) %>">
+                                        <span class="label radius" style="background-color: #<%= color(tag) %>;"><%= tag %></span>
+                                    </a>
+                                    <% end %>
+                                    <a href="<%= link.get('url') %>" target="_blank">
+                                        <%= link.get('title') %>
+                                    </a>
+                                </div>
+                                <div class="two columns">
+                                    <span class="right">
+                                        <%= ago(link.get('date')) %>
+                                    </span>
+                                </div>
+                                <div class="clearfix"></div>
+                            </div>
+                            <div class="content">
+                                <% if link.is_image? then %>
+                                <a href="<%= link.get('url') %>" class="th" target="_blank">
+                                    <img src="<%= link.get('url') %>" />
+                                </a>
+                                <% elsif link.is_html? then %>
+                                <%= link.get 'content' %>
+                                <% end %>
+                            </div>
+                        </li>
+                    <% end %>
+                    </ul>
+                    <% if @pages > 1 then %>
+                    <div class="pagination-centered">
+                        <ul class="pagination">
+                            <% if @page != 1 then %>
+                                <li class="arrow"><a href="<%= query({'page' => 1}, false) %>" title="First">&laquo;</a></li>
+                                <li class="arrow"><a href="<%= query({'page' => @page-1}, false) %>" title="Previous">&lsaquo;</a></li>
+                            <% else %>
+                                <li class="arrow unavailable"><a href="#">&laquo;</a></li>
+                                <li class="arrow unavailable"><a href="#">&lsaquo;</a></li>
+                            <% end %>
+                            <% for page in [1,@page-2].max..@page-1 %>
+                                <li><a href="<%= query({'page' => page}, false) %>"><%= page %></a></li>
+                            <% end %>
+                            <li class="current"><a href="<%= query({'page' => @page}, false) %>"><%= @page %></a></li>
+                            <% for page in @page+1..[@pages,@page+2].min %>
+                                <li><a href="<%= query({'page' => page}, false) %>"><%= page %></a></li>
+                            <% end %>
+                            <% if @page != @pages then %>
+                                <li class="arrow"><a href="<%= query({'page' => @page+1}, false) %>" title="Next">&rsaquo;</a></li>
+                                <li class="arrow"><a href="<%= query({'page' => @pages}, false) %>" title="Last">&raquo;</a></li>
+                            <% else %>
+                                <li class="arrow unavailable"><a href="#">&rsaquo;</a></li>
+                                <li class="arrow unavailable"><a href="#">&raquo;</a></li>
+                            <% end %>
+                        </ul>
+                    </div>
+                    <% end %>
+                <% end %>
+            </div>
+        </div>
+        <footer class="row">
+            <p class="six columns">
+                &copy; 2012-2013 <a href="http://www.blizzart.net/" target="_blank">Blizz'art</a>
+            </p>
+            <p class="six columns">
+                <span class="right">
+                Built with <a href="http://redis.io" target="_blank">Redis</a>, <a href="http://sinatrarb.com" target="_blank">Sinatra</a> and <a href="http://foundation.zurb.com" target="_blank">Foundation</a>.
+                </span>
+            </p>
+        </footer>
+        <script type="text/javascript" src="/js/foundation.min.js"></script>
+        <script type="text/javascript" src="/js/app.js"></script>
+    </body>
+</html>
