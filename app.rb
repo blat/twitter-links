@@ -2,7 +2,9 @@
 
 require 'sinatra'
 require 'erb'
-require './twitter-links'
+require './lib/user'
+require './lib/config'
+require 'twitter_oauth'
 
 configure do
     set :sessions, true
@@ -10,15 +12,20 @@ end
 
 before do
     @home = request.scheme + '://' + request.host + ':' + request.port.to_s
-    @twitter = TwitterLinks::Twitter.new
+
+    config = TwitterLinks::Config.get
+    options = {
+        :consumer_key => config['twitter_consumer_key'],
+        :consumer_secret => config['twitter_consumer_secret'],
+    }
     if not session[:user_id].nil? then
-        @user = TwitterLinks::User.new session[:user_id]
-        if not @user.has? 'screen_name' then
-            @user = nil
-        else
-            @twitter = @user.twitter
+        @user = TwitterLinks::User.get session[:user_id]
+        if not @user.nil? then
+            options[:token] = @user.token
+            options[:secret] = @user.secret
         end
     end
+    @twitter = TwitterOAuth::Client.new options
 end
 
 get '/' do
@@ -26,42 +33,53 @@ get '/' do
         redirect to '/connect'
     end
 
-    if params.has_key? 'page' then
+    if params.has_key? 'page' and not params['page'].empty? then
         @page = params['page'].to_i
     else
         @page = 1
     end
 
-    if params.has_key? 'search' then
+    if params.has_key? 'search' and not params['search'].empty? then
         @search = params['search']
     else
-        @search = ''
+        @search = '*'
     end
 
-    range = 25
-    start = (@page - 1) * range
-    stop = start + range - 1
-    @links = @user.get_links @search, start, stop
+    if params.has_key? 'count' and not params['count'].empty? then
+        count = params['count']
+    else
+        count = 25
+    end
+
+    start = (@page - 1) * count
+    stop = start + count - 1
+    @links = @user.links @search, start, stop
 
     total = @user.count_links @search
-    @pages = (total.to_f / range).ceil
+    @pages = (total.to_f / count).ceil
 
     erb :index
 end
 
-get '/feed/:user_id/:token' do |user_id,token|
-    @user = TwitterLinks::User.new user_id
-    if @user.get('secret') != token then
+get '/feed/:user_id/:token' do |user_id, token|
+    @user = TwitterLinks::User.get user_id
+    if @user.secret != token then
         halt 403, 'Forbidden!'
     end
 
-    if params.has_key? 'search' then
+    if params.has_key? 'search' and not params['search'].empty? then
         search = params['search']
     else
-        search = ''
+        search = '*'
     end
 
-    @links = @user.get_links search
+    if params.has_key? 'count' and not params['count'].empty? then
+        count = params['count']
+    else
+        count = 25
+    end
+
+    @links = @user.links search, 0, count, 'date:desc'
     builder :feed
 end
 
@@ -85,12 +103,16 @@ get '/auth' do
 
         if @twitter.authorized? then
             info = @twitter.info
+            id = info['id'].to_s
 
-            user = TwitterLinks::User.new info['id'].to_s
-            user.set 'screen_name', info['screen_name']
-            user.set 'token', access_token.token
-            user.set 'secret', access_token.secret
-            user.save
+            user = TwitterLinks::User.get id
+            if user.nil? then
+                user = TwitterLinks::User.new id
+                user.screen_name = info['screen_name']
+                user.token = access_token.token
+                user.secret = access_token.secret
+                user.save
+            end
 
             session[:user_id] = user.id
 
@@ -130,15 +152,10 @@ helpers do
         return diff.ceil.to_s + " day(s) ago"
     end
 
-    def query(data, reset = false)
-
-        if reset then
-            result = data
-        else
-            result = request.env['rack.request.query_hash'].clone
-            data.each do |key, value|
-                result[key] = value
-            end
+    def query(data)
+        result = request.env['rack.request.query_hash'].clone
+        data.each do |key, value|
+            result[key] = value
         end
 
         values = []
@@ -149,12 +166,10 @@ helpers do
         '?' + values.join('&')
     end
 
-    def color(tag)
-        result = ""
-        tag.scan(/./).each do |char|
-            result = result + char.ord.to_s
-        end
-        result.to_i.to_s(16)[0..5]
+    def tweet(text)
+        text = text.gsub(%r{(https?://t.co/\w+)}, '<a target="_blank" href="\1">\1</a>')
+        text = text.gsub(%r{@(\w+)}, '<a href="?search=user:\1">@\1</a>')
+        text = text.gsub(%r{#(\w+)}, '<a href="?search=tag:\1">#\1</a>')
     end
 
 end

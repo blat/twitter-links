@@ -1,0 +1,7 @@
+source 'https://rubygems.org'
+gem 'elasticsearch'
+gem 'json'
+gem 'hashie'
+gem 'sinatra'
+gem 'twitter'
+gem 'twitter_oauth'

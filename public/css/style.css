@@ -1,0 +1,115 @@
+* {
+    margin: 0;
+    padding: 0;
+}
+
+body {
+    color: black;
+    font-family: arial, sans-serif;
+    font-size: 13px;
+}
+
+a {
+    color: black;
+    text-decoration: none;
+}
+
+#main a:hover {
+    color: #428BCA !important;
+}
+
+.container {
+    width: 960px;
+    margin: 0 auto;
+    padding: 10px 20px;
+}
+
+header {
+    background: #428BCA;
+}
+
+header ul,
+header form {
+    display: inline-block;
+}
+
+header form {
+    float: right;
+}
+
+.brand {
+    height: 24px;
+    vertical-align: middle;
+    margin-right: 20px;
+}
+
+#main {
+    background: #f6f6ef;
+}
+
+.updated {
+    float: right;
+}
+
+.link span,
+.link span a,
+.popularity,
+.tweet,
+.tweet a {
+    color: #828282;
+}
+
+.link {
+    list-style-type: square;
+    padding: 10px 0;
+    margin-left: 15px;
+}
+
+.tweets {
+    font-size: x-small;
+}
+
+.tweet {
+    list-style-type: none;
+    padding-top: 5px;
+}
+
+.pagination {
+    padding: 10px 0;
+    margin-left: 15px;
+}
+
+footer ul {
+    text-align: center;
+    font-size: small;
+    padding: 10px;
+}
+
+.pagination li,
+header li,
+footer li {
+    display: inline-block;
+}
+
+.link .lists a::after,
+.pagination li::after,
+header li::after,
+footer li::after {
+    content: " | ";
+    color: #828282;
+}
+
+.link .lists a::after {
+    content: ", ";
+}
+
+.link .lists a:last-child::after {
+    content: "";
+}
+
+.pagination li:last-child::after,
+header li:last-child::after,
+footer li:last-child::after {
+    content: ".";
+}
+

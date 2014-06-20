@@ -4,38 +4,45 @@ Twitter Links
 Twitter Links is a tools to grab all links shared by your friends on Twitter.
 
 
-Dependances
+Demo
 -----------------
 
-* sinatra
-* redis
-* twitter_oauth
+* [twitter.blizzart.net](http://twitter.blizzart.net/)
 
 
 Setup
 -----------------
 
-1. Install ruby and all dependancies (see above)
+1. Install bundler:
 
-2. Create a [Twitter app](https://dev.twitter.com/apps/new) and get an API key and a secret
+        gem install bundler
 
-3. Copy config file:
+2. Install all dependencies:
+
+        bundle install
+
+3. Create a [Twitter app](https://dev.twitter.com/apps/new) and get an API key and a secret
+
+4. Ask for a [Readability API key](https://www.readability.com/developers/api/parser)
+
+5. Copy config file:
 
         cp config.yml-dist config.yml
 
-4. Edit `config.yml` to add your Twitter API key and your secret:
+6. Edit `config.yml` to add your API keys:
 
-        consumer_key: #TWITTER_CONSUMER_KEY#
-        consumer_secret: #TWITTER_CONSUMER_SECRET#
+        twitter_consumer_key: #TWITTER_CONSUMER_KEY#
+        twitter_consumer_secret: #TWITTER_CONSUMER_SECRET#
+        readability_api_key: #READABILITY_API_KEY#
 
-5. Launch application:
+7. Launch application:
 
         ruby app.rb
 
-6. Go to [http://localhost:4567](http://localhost:4567) and sign-in
+8. Go to [http://localhost:4567](http://localhost:4567) and sign-in
 
-7. Run crawler:
+9. Run crawler:
 
         ruby crawler.rb
 
-8. Refresh [http://localhost:4567](http://localhost:4567)
+10. Refresh [http://localhost:4567](http://localhost:4567)
